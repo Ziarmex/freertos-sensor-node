@@ -1,0 +1,29 @@
+# STM32CubeMX / CubeIDE generated trees (not committed)
+Drivers/
+Middlewares/
+Core/Startup/
+.mxproject
+.settings/
+.cproject
+.project
+
+# Build output
+Debug/
+Release/
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.d
+*.su
+*.list
+
+# Host test binary
+host_tests/test_sensor_core
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
