@@ -1,0 +1,279 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 780" width="1200" height="780" role="img" aria-labelledby="diagram-title diagram-desc" font-family="Inter, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <title id="diagram-title">STM32 FreeRTOS sensor node architecture</title>
+  <desc id="diagram-desc">A NUCLEO-L476RG reads a BME280 over I2C1 or a simulated sensor. Three CMSIS-RTOS2 tasks form a fixed-priority pipeline. acq_task samples on a DWT-timestamped 1000 ms period and publishes to a 16-entry sample queue. process_task keeps 32-sample ring buffers per channel and measures end-to-end latency before publishing to an 8-entry stat queue. console_task prints every tenth stat over USART2 and checks the acquisition heartbeat. A full queue drops the newest sample and logs it. FreeRTOS tickless idle and an optional STOP2 path provide low power.</desc>
+
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="1" cy="1" r="0.8" fill="#E8EDF2" opacity="0.09"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#ECF0F3"/>
+    </marker>
+    <marker id="arrow-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#F0A83C"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#5FE0B4"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="780" fill="#14181D"/>
+  <rect width="1200" height="780" fill="url(#dots)"/>
+
+  <!-- Header -->
+  <text x="48" y="48" font-size="9.5" font-weight="600" letter-spacing="2.2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#F0A83C">FIG. 02 — RTOS SENSOR NODE</text>
+  <text x="48" y="79" font-size="24" font-family="Georgia, 'Times New Roman', serif" fill="#ECF0F3">STM32 FreeRTOS sensor node</text>
+  <text x="48" y="99" font-size="11.5" fill="#9AA3AC">fixed-period acquisition → queue-decoupled statistics → console + watchdog</text>
+  <text x="1152" y="52" font-size="9.5" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">STM32L476RG · Cortex-M4F @ 80 MHz</text>
+  <text x="1152" y="68" font-size="9.5" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">CMSIS-RTOS2 / FreeRTOS · DWT µs timebase</text>
+  <line x1="48" y1="112" x2="1152" y2="112" stroke="#2A3037"/>
+
+  <!-- Hardware -->
+  <text x="48" y="138" font-size="10" font-weight="600" letter-spacing="2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">HARDWARE</text>
+
+  <!-- BME280 breakout -->
+  <g>
+    <rect x="64" y="156" width="130" height="58" rx="4" fill="#1C2229" stroke="#0B0E12" stroke-width="1.5"/>
+    <circle cx="70" cy="162" r="1.5" fill="#5E7286"/>
+    <rect x="78" y="164" width="32" height="30" rx="2" fill="#D0D7DD" stroke="#8E99A3" stroke-width="1.2"/>
+    <line x1="84" y1="172" x2="104" y2="172" stroke="#8E99A3" stroke-width="0.8"/>
+    <line x1="84" y1="178" x2="104" y2="178" stroke="#8E99A3" stroke-width="0.8"/>
+    <line x1="84" y1="184" x2="104" y2="184" stroke="#8E99A3" stroke-width="0.8"/>
+    <text x="116" y="176" font-size="9.5" font-weight="700" fill="#D6E0E9">BME280</text>
+    <text x="116" y="190" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#8FA0B2">0x77</text>
+    <g fill="#D9A441">
+      <rect x="76" y="206" width="9" height="4" rx="1"/>
+      <rect x="90" y="206" width="9" height="4" rx="1"/>
+      <rect x="104" y="206" width="9" height="4" rx="1"/>
+      <rect x="118" y="206" width="9" height="4" rx="1"/>
+    </g>
+  </g>
+
+  <text x="204" y="170" font-size="9" font-weight="600" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#F3B95F">I2C1 · 400 kHz</text>
+  <text x="204" y="186" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">PB8 SCL / PB9 SDA</text>
+  <text x="204" y="202" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">BME280 0x77 · 3V3</text>
+  <text x="204" y="222" font-size="8.5" fill="#F3B95F">simulated sensor is default</text>
+
+  <path d="M93 210 V230 H112 V250" fill="none" stroke="#F0A83C" stroke-width="1.2"/>
+  <path d="M107 210 V236 H120 V250" fill="none" stroke="#F0A83C" stroke-width="1.2"/>
+  <text x="128" y="245" font-size="6" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#F3B95F">PB8 · PB9</text>
+
+  <!-- NUCLEO-L476RG board -->
+  <g>
+    <rect x="62" y="250" width="220" height="152" rx="8" fill="#1C2229" stroke="#3A4550" stroke-width="1.5"/>
+    <rect x="63" y="251" width="39" height="150" rx="7" fill="#1E242B"/>
+    <line x1="104" y1="251" x2="104" y2="401" stroke="#2A3037"/>
+    <rect x="68" y="242" width="28" height="14" rx="2" fill="#D0D7DD" stroke="#8E99A3"/>
+    <rect x="73" y="245" width="18" height="6" rx="1" fill="#6B7580"/>
+    <rect x="72" y="276" width="22" height="32" rx="2" fill="#3A4550"/>
+    <text x="66" y="326" font-size="5.5" fill="#8E99A3">ST-LINK</text>
+    <text x="66" y="334" font-size="5.5" fill="#8E99A3">VCP</text>
+    <text x="124" y="266" font-size="7" letter-spacing="0.6" fill="#8E99A3">NUCLEO-L476RG</text>
+
+    <g fill="#3A4550">
+      <rect x="110" y="268" width="8" height="7" rx="1"/><rect x="110" y="281" width="8" height="7" rx="1"/><rect x="110" y="294" width="8" height="7" rx="1"/><rect x="110" y="307" width="8" height="7" rx="1"/><rect x="110" y="320" width="8" height="7" rx="1"/><rect x="110" y="333" width="8" height="7" rx="1"/><rect x="110" y="346" width="8" height="7" rx="1"/><rect x="110" y="359" width="8" height="7" rx="1"/><rect x="110" y="372" width="8" height="7" rx="1"/><rect x="110" y="385" width="8" height="7" rx="1"/>
+      <rect x="264" y="268" width="8" height="7" rx="1"/><rect x="264" y="281" width="8" height="7" rx="1"/><rect x="264" y="294" width="8" height="7" rx="1"/><rect x="264" y="307" width="8" height="7" rx="1"/><rect x="264" y="320" width="8" height="7" rx="1"/><rect x="264" y="333" width="8" height="7" rx="1"/><rect x="264" y="346" width="8" height="7" rx="1"/><rect x="264" y="359" width="8" height="7" rx="1"/><rect x="264" y="372" width="8" height="7" rx="1"/><rect x="264" y="385" width="8" height="7" rx="1"/>
+    </g>
+
+    <rect x="148" y="292" width="58" height="54" rx="3" fill="#262E37" stroke="#2A3037"/>
+    <circle cx="154" cy="298" r="1.4" fill="#5E7286"/>
+    <text x="177" y="315" font-size="8" font-weight="700" fill="#D6E0E9" text-anchor="middle">STM32</text>
+    <text x="177" y="326" font-size="7" fill="#9AA3AC" text-anchor="middle">L476RG</text>
+
+    <g fill="#D9A441">
+      <rect x="144" y="300" width="4" height="2"/><rect x="144" y="309" width="4" height="2"/><rect x="144" y="318" width="4" height="2"/><rect x="144" y="327" width="4" height="2"/><rect x="144" y="336" width="4" height="2"/>
+      <rect x="206" y="300" width="4" height="2"/><rect x="206" y="309" width="4" height="2"/><rect x="206" y="318" width="4" height="2"/><rect x="206" y="327" width="4" height="2"/><rect x="206" y="336" width="4" height="2"/>
+    </g>
+
+    <circle cx="230" cy="264" r="2" fill="#5FE0B4"/>
+    <circle cx="241" cy="264" r="2" fill="#F0A83C"/>
+    <circle cx="196" cy="388" r="5" fill="#6FB7E8" stroke="#2A3037"/>
+    <circle cx="216" cy="388" r="5" fill="#3A4550" stroke="#2A3037"/>
+    <text x="110" y="399" font-size="5.5" fill="#8E99A3">PA2/PA3 · UART2 → VCP</text>
+  </g>
+
+  <text x="62" y="422" font-size="14" font-weight="700" fill="#ECF0F3">NUCLEO-L476RG</text>
+  <text x="62" y="440" font-size="9" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">STM32L476RG · Cortex-M4F @ 80 MHz</text>
+
+  <!-- Task graph -->
+  <text x="330" y="138" font-size="10" font-weight="600" letter-spacing="2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">TASK GRAPH — CMSIS-RTOS2 / FreeRTOS</text>
+  <text x="1152" y="138" font-size="9" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">strict priority · acq &gt; process &gt; console</text>
+
+  <path d="M286 268 H322" fill="none" stroke="#F0A83C" stroke-width="1.4" stroke-dasharray="3 3" marker-end="url(#arrow-amber)"/>
+  <text x="304" y="260" font-size="7.5" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#F3B95F">I2C read</text>
+
+  <!-- acq_task -->
+  <g>
+    <rect x="330" y="186" width="148" height="158" rx="6" fill="#2A2318" stroke="#5A4724"/>
+    <rect x="330" y="186" width="148" height="3" fill="#F0A83C"/>
+    <text x="344" y="207" font-size="8" font-weight="600" letter-spacing="1.2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#F0A83C">PRIORITY HIGH</text>
+    <text x="344" y="231" font-size="18" font-weight="700" fill="#ECF0F3">acq_task</text>
+    <text x="344" y="247" font-size="9.5" fill="#9AA3AC">1000 ms fixed period</text>
+    <line x1="344" y1="258" x2="464" y2="258" stroke="#5A4724"/>
+    <text x="344" y="276" font-size="9.5" fill="#ECF0F3">read BME280 / sim</text>
+    <text x="344" y="292" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">DWT t0 → t1</text>
+    <text x="344" y="308" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">put · 0 timeout</text>
+    <text x="344" y="324" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#5FE0B4">hb++ on publish</text>
+    <text x="344" y="340" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">4 KB · osPriorityHigh</text>
+  </g>
+
+  <!-- sample_q -->
+  <text x="518" y="210" font-size="10.5" font-weight="700" text-anchor="middle" fill="#ECF0F3">sample_q</text>
+  <rect x="496" y="220" width="44" height="98" rx="4" fill="#1C2229" stroke="#5A4724"/>
+  <g fill="#F0A83C" opacity="0.85">
+    <rect x="502" y="226" width="32" height="3.5" rx="1"/><rect x="502" y="231.7" width="32" height="3.5" rx="1"/><rect x="502" y="237.4" width="32" height="3.5" rx="1"/><rect x="502" y="243.1" width="32" height="3.5" rx="1"/><rect x="502" y="248.8" width="32" height="3.5" rx="1"/><rect x="502" y="254.5" width="32" height="3.5" rx="1"/>
+  </g>
+  <g fill="#5A4724">
+    <rect x="502" y="260.2" width="32" height="3.5" rx="1"/><rect x="502" y="265.9" width="32" height="3.5" rx="1"/><rect x="502" y="271.6" width="32" height="3.5" rx="1"/><rect x="502" y="277.3" width="32" height="3.5" rx="1"/><rect x="502" y="283" width="32" height="3.5" rx="1"/><rect x="502" y="288.7" width="32" height="3.5" rx="1"/><rect x="502" y="294.4" width="32" height="3.5" rx="1"/><rect x="502" y="300.1" width="32" height="3.5" rx="1"/><rect x="502" y="305.8" width="32" height="3.5" rx="1"/><rect x="502" y="311.5" width="32" height="3.5" rx="1"/>
+  </g>
+  <text x="518" y="332" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">len 16</text>
+  <text x="518" y="351" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#FF6B5E">full → drop newest</text>
+  <text x="518" y="365" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#FF6B5E">log seq · acq never blocks</text>
+
+  <!-- process_task -->
+  <g>
+    <rect x="558" y="186" width="186" height="158" rx="6" fill="#122A24" stroke="#2C5E51"/>
+    <rect x="558" y="186" width="186" height="3" fill="#5FE0B4"/>
+    <text x="572" y="207" font-size="8" font-weight="600" letter-spacing="1.2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#5FE0B4">PRIORITY ABOVE NORMAL</text>
+    <text x="572" y="231" font-size="18" font-weight="700" fill="#ECF0F3">process_task</text>
+    <text x="572" y="247" font-size="9.5" fill="#9AA3AC">queue consumer · statistics</text>
+    <line x1="572" y1="258" x2="730" y2="258" stroke="#2C5E51"/>
+    <text x="572" y="276" font-size="9.5" fill="#ECF0F3">3 × ring buffer</text>
+    <text x="572" y="292" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">window 32 / channel</text>
+    <text x="572" y="308" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">mean · min · max</text>
+    <text x="572" y="324" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">e2e = t_proc − t_acq</text>
+    <text x="572" y="340" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">4 KB · lossy stats</text>
+    <circle cx="716" cy="276" r="10" fill="none" stroke="#5FE0B4" stroke-width="1" opacity="0.35"/>
+    <g fill="#5FE0B4" opacity="0.8">
+      <circle cx="716" cy="266" r="1.3"/><circle cx="723" cy="269" r="1.3"/><circle cx="726" cy="276" r="1.3"/><circle cx="723" cy="283" r="1.3"/><circle cx="716" cy="286" r="1.3"/><circle cx="709" cy="283" r="1.3"/><circle cx="706" cy="276" r="1.3"/><circle cx="709" cy="269" r="1.3"/>
+    </g>
+  </g>
+
+  <!-- stat_q -->
+  <text x="784" y="210" font-size="10.5" font-weight="700" text-anchor="middle" fill="#ECF0F3">stat_q</text>
+  <rect x="762" y="220" width="44" height="68" rx="4" fill="#1C2229" stroke="#2A3037"/>
+  <g fill="#7E8892" opacity="0.45">
+    <rect x="768" y="226" width="32" height="3.5" rx="1"/><rect x="768" y="233.2" width="32" height="3.5" rx="1"/><rect x="768" y="240.4" width="32" height="3.5" rx="1"/><rect x="768" y="247.6" width="32" height="3.5" rx="1"/><rect x="768" y="254.8" width="32" height="3.5" rx="1"/><rect x="768" y="262" width="32" height="3.5" rx="1"/><rect x="768" y="269.2" width="32" height="3.5" rx="1"/><rect x="768" y="276.4" width="32" height="3.5" rx="1"/>
+  </g>
+  <text x="784" y="302" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">len 8</text>
+  <text x="784" y="316" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">lossy</text>
+
+  <!-- console_task -->
+  <g>
+    <rect x="824" y="186" width="180" height="158" rx="6" fill="#1C2229" stroke="#2A3037"/>
+    <rect x="824" y="186" width="180" height="3" fill="#ECF0F3"/>
+    <text x="838" y="207" font-size="8" font-weight="600" letter-spacing="1.2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">PRIORITY NORMAL</text>
+    <text x="838" y="231" font-size="18" font-weight="700" fill="#ECF0F3">console_task</text>
+    <text x="838" y="247" font-size="9.5" fill="#9AA3AC">print + software watchdog</text>
+    <line x1="838" y1="258" x2="990" y2="258" stroke="#2A3037"/>
+    <text x="838" y="276" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">get stat_q · 1 s timeout</text>
+    <text x="838" y="292" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">print every 10th sample</text>
+    <text x="838" y="308" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">UART2 PA2/PA3 · 115200</text>
+    <text x="838" y="324" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#FF6B5E">hb stale 3×T → ERROR</text>
+    <text x="838" y="340" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">software watchdog, not IWDG</text>
+  </g>
+
+  <!-- Pipeline arrows -->
+  <line x1="478" y1="272" x2="492" y2="272" stroke="#ECF0F3" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="540" y1="272" x2="554" y2="272" stroke="#ECF0F3" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="744" y1="272" x2="758" y2="272" stroke="#ECF0F3" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="806" y1="272" x2="820" y2="272" stroke="#ECF0F3" stroke-width="1.6" marker-end="url(#arrow)"/>
+  <line x1="1004" y1="272" x2="1018" y2="272" stroke="#ECF0F3" stroke-width="1.6" marker-end="url(#arrow)"/>
+
+  <!-- Host console -->
+  <g>
+    <rect x="1022" y="236" width="130" height="88" rx="5" fill="#1C2229" stroke="#0B0E12" stroke-width="1.5"/>
+    <rect x="1027" y="246" width="120" height="72" rx="3" fill="#0F1318"/>
+    <circle cx="1033" cy="241" r="1.5" fill="#5E7286"/>
+    <circle cx="1039" cy="241" r="1.5" fill="#5E7286"/>
+    <text x="1034" y="262" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#5FE0B4">[node] seq=1289</text>
+    <text x="1034" y="274" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#C9D5E0">T=23.14 P=1012.6</text>
+    <text x="1034" y="286" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#8FA0B2">acq=482 e2e=912</text>
+    <text x="1034" y="298" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#8FA0B2">RH=47.3 n=32</text>
+  </g>
+  <text x="1087" y="342" font-size="10" font-weight="700" text-anchor="middle" fill="#ECF0F3">Host console</text>
+  <text x="1087" y="356" font-size="8" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">ST-Link VCP · 115200</text>
+
+  <!-- Heartbeat path -->
+  <path d="M404 184 V172 H914 V182" fill="none" stroke="#5FE0B4" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrow-green)"/>
+  <circle cx="404" cy="185" r="2.5" fill="#5FE0B4"/>
+  <text x="660" y="164" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#5FE0B4">g_acq_heartbeat → console: ERROR if unchanged for 3 × period</text>
+
+  <text x="330" y="400" font-size="8" letter-spacing="1.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">MESSAGE PAYLOADS</text>
+  <text x="330" y="416" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">sample_msg_t → sample + t_acq_us + acq_latency_us + seq</text>
+  <text x="330" y="430" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">stat_msg_t → sample + t_proc_us + e2e_latency_us + 3× ring_stats + seq</text>
+  <text x="330" y="444" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">osMessageQueuePut(..., 0) · osMessageQueueGet(..., wait) · ringbuf_push / ringbuf_stats · micros()</text>
+  <text x="1152" y="416" font-size="8" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">timestamps travel in the message, not in globals</text>
+
+  <line x1="48" y1="456" x2="1152" y2="456" stroke="#2A3037"/>
+
+  <!-- Timing -->
+  <text x="48" y="478" font-size="10" font-weight="600" letter-spacing="2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">TIMING — PERIOD · JITTER · LATENCY</text>
+  <text x="1152" y="478" font-size="9" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">DWT CYCCNT · unsigned deltas wrap-safe (≈71 min @ 80 MHz)</text>
+
+  <text x="48" y="501" font-size="8" letter-spacing="1.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">PERIOD</text>
+  <text x="48" y="520" font-size="15" font-weight="700" fill="#ECF0F3">T = 1000 ms</text>
+  <text x="48" y="534" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">APP_SAMPLE_PERIOD_MS</text>
+  <rect x="48" y="545" width="8" height="8" fill="#F0A83C"/>
+  <text x="62" y="553" font-size="9" fill="#ECF0F3">acq read (t1 − t0)</text>
+  <circle cx="52" cy="565" r="3" fill="#5FE0B4"/>
+  <text x="62" y="569" font-size="9" fill="#ECF0F3">process (t_proc)</text>
+  <line x1="48" y1="578" x2="48" y2="588" stroke="#7E8892" stroke-width="1"/>
+  <text x="62" y="586" font-size="9" fill="#ECF0F3">expected wake</text>
+
+  <line x1="350" y1="544" x2="1140" y2="544" stroke="#6A7480" stroke-width="1"/>
+  <g stroke="#7E8892" stroke-width="1">
+    <line x1="400" y1="544" x2="400" y2="553"/><line x1="560" y1="544" x2="560" y2="553"/><line x1="720" y1="544" x2="720" y2="553"/><line x1="880" y1="544" x2="880" y2="553"/><line x1="1040" y1="544" x2="1040" y2="553"/>
+  </g>
+  <g stroke="#F0A83C" stroke-width="1.6">
+    <line x1="407" y1="537" x2="407" y2="544"/><line x1="567" y1="537" x2="567" y2="544"/><line x1="727" y1="537" x2="727" y2="544"/><line x1="887" y1="537" x2="887" y2="544"/><line x1="1047" y1="537" x2="1047" y2="544"/>
+  </g>
+  <g fill="#F0A83C" opacity="0.85">
+    <rect x="407" y="541" width="24" height="3"/><rect x="567" y="541" width="24" height="3"/><rect x="727" y="541" width="24" height="3"/><rect x="887" y="541" width="24" height="3"/><rect x="1047" y="541" width="24" height="3"/>
+  </g>
+  <g fill="#5FE0B4">
+    <circle cx="462" cy="544" r="3"/><circle cx="622" cy="544" r="3"/><circle cx="782" cy="544" r="3"/><circle cx="942" cy="544" r="3"/><circle cx="1102" cy="544" r="3"/>
+  </g>
+  <g stroke="#7E8892" stroke-width="1" fill="none">
+    <path d="M400 497 V507 M400 502 H560 M560 497 V507"/>
+    <path d="M400 509 V519 M400 514 H407 M407 509 V519"/>
+  </g>
+  <text x="480" y="494" font-size="8.5" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">T = 1000 ms</text>
+  <text x="414" y="520" font-size="7.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#F0A83C">jitter</text>
+  <g font-size="8" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">
+    <text x="400" y="560">t0</text><text x="560" y="560">t0+T</text><text x="720" y="560">t0+2T</text><text x="880" y="560">t0+3T</text><text x="1040" y="560">t0+4T</text>
+  </g>
+  <path d="M407 568 V578 M407 573 H462 M462 568 V578" fill="none" stroke="#5FE0B4" stroke-width="1"/>
+  <text x="434" y="590" font-size="7.5" text-anchor="middle" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#5FE0B4">e2e = t_proc − t_acq</text>
+  <text x="1140" y="590" font-size="8" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">console prints every 10th stat · timing illustrative, not to scale</text>
+
+  <!-- Power and testability -->
+  <text x="48" y="608" font-size="10" font-weight="600" letter-spacing="2" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#9AA3AC">LOW POWER &amp; TESTABILITY</text>
+  <g>
+    <circle cx="68" cy="632" r="10" fill="#5FE0B4"/>
+    <circle cx="72.5" cy="628.5" r="8.5" fill="#14181D"/>
+    <text x="94" y="626" font-size="13" font-weight="700" fill="#ECF0F3">Tickless idle</text>
+    <text x="94" y="642" font-size="8.8" fill="#9AA3AC">all tasks blocked → SysTick off · optional STOP2 + RTC wake</text>
+  </g>
+  <g>
+    <circle cx="528" cy="632" r="10" fill="none" stroke="#5FE0B4" stroke-width="1.5"/>
+    <path d="M523 632 l4 4 l8 -9" fill="none" stroke="#5FE0B4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="550" y="626" font-size="13" font-weight="700" fill="#ECF0F3">Pure-C, host-tested core</text>
+    <text x="550" y="642" font-size="8.8" fill="#9AA3AC">ringbuf + stats · no HAL/RTOS deps · gcc + assert in CI</text>
+  </g>
+  <text x="1152" y="628" font-size="9" font-weight="600" text-anchor="end" fill="#F3B95F">BME280 path not calibrated here</text>
+  <text x="1152" y="642" font-size="8" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#7E8892">simulated sensor remains the default</text>
+
+  <!-- Serial log -->
+  <rect x="64" y="660" width="1088" height="58" rx="6" fill="#0B0F13" stroke="#262E37"/>
+  <circle cx="80" cy="678" r="3" fill="#5FE0B4"/>
+  <text x="1136" y="678" font-size="8" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#5E7286">UART2 · 115200 · example</text>
+  <text x="96" y="678" font-size="9" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#8FA0B2"><tspan fill="#F0A83C">[app]</tspan> node started (period=1000 ms, window=32)</text>
+  <text x="96" y="694" font-size="9" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#8FA0B2"><tspan fill="#F0A83C">[node]</tspan> seq=1289 T=23.14C [mean=23.02 min=22.71 max=23.48 n=32] P=1012.6hPa RH=47.3% <tspan fill="#5FE0B4">acq=482us e2e=912us</tspan></text>
+  <text x="96" y="710" font-size="9" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#FF6B5E"><tspan fill="#F0A83C">[acq]</tspan> queue full, dropped seq=1290</text>
+
+  <text x="64" y="732" font-size="8" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#6A7480">example output · values illustrative; on-target latency and sleep current are still to be measured</text>
+
+  <text x="48" y="750" font-size="8.5" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#6A7480">source: app_config.h · app_tasks.c · acq_task.c · process_task.c · console_task.c · sensor_core.c</text>
+  <text x="1152" y="750" font-size="8.5" text-anchor="end" font-family="'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace" fill="#6A7480">github.com/Ziarmex/freertos-sensor-node</text>
+</svg>

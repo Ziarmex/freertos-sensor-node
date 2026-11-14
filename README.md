@@ -12,17 +12,7 @@ do?
 
 ## Task architecture
 
-```
-        (High)                   (AboveNormal)                (Normal)
-  ┌──────────────┐ sample_q  ┌──────────────┐  stat_q   ┌──────────────┐
-  │  acq_task    │──────────>│ process_task │─────────>│ console_task │
-  │ read sensor  │  (len 16) │ sliding avg  │  (len 8) │ print + WDT  │
-  │ DWT stamp    │           │ stats + e2e  │          │ heartbeat    │
-  └──────────────┘           └──────────────┘          └──────────────┘
-         │                                                     │
-         └──────────── g_acq_heartbeat ───────────────────────┘
-                     (console detects a stalled acq task)
-```
+<img src="docs/diagrams/freertos-sensor-node-architecture.svg" alt="STM32 FreeRTOS sensor node: BME280 over I2C1, acq_task to sample_q to process_task to stat_q to console_task, DWT timing, heartbeat watchdog, and tickless idle" width="100%">
 
 - **Producer/consumer queues** isolate the fast I2C read from the slow console;
   a full sample queue drops the newest sample and logs it instead of blocking.
